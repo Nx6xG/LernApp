@@ -3,10 +3,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useWorkspaceContext } from '@/hooks/useWorkspaceContext';
 import { useAppStore } from '@/stores/app-store';
-import { Plus, BookOpen, Trash2, Edit2, Save, X, Sparkles, Tag, Lock } from 'lucide-react';
+import { Plus, BookOpen, Trash2, Edit2, Save, X, Sparkles, Tag, Layers } from 'lucide-react';
 import type { TheoryNote } from '@/types';
 import { AIGenerateModal } from '@/components/ui/AIGenerateModal';
+import { SelectionContextMenu } from '@/components/theorie/SelectionContextMenu';
+import { NoteToFlashcards } from '@/components/theorie/NoteToFlashcards';
 import dynamic from 'next/dynamic';
+import { useRef } from 'react';
 
 // Lazy load the editor to avoid SSR issues
 const NotionEditor = dynamic(
@@ -25,6 +28,9 @@ export default function TheoriePage() {
     editTheoryNote,
     removeTheoryNote,
     addSubject,
+    decks,
+    loadDecks,
+    addFlashcard,
   } = useAppStore();
 
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -36,11 +42,15 @@ export default function TheoriePage() {
   const [tagInput, setTagInput] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  const [showNoteToCards, setShowNoteToCards] = useState(false);
+  const [flashcardToast, setFlashcardToast] = useState('');
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (workspaceId) {
       loadSubjects(workspaceId);
       loadTheoryNotes(workspaceId);
+      loadDecks(workspaceId);
     }
   }, [workspaceId]);
 
@@ -120,6 +130,36 @@ export default function TheoriePage() {
       }
     }
     setShowAI(false);
+  };
+
+  const handleAddFlashcard = async (front: string, back: string) => {
+    // Use the first deck, or show a message if no decks exist
+    const deck = decks[0];
+    if (!deck) {
+      setFlashcardToast('Erstelle zuerst einen Kartenstapel unter "Karteikarten".');
+      setTimeout(() => setFlashcardToast(''), 3000);
+      return;
+    }
+    await addFlashcard({
+      deckId: deck.id,
+      front,
+      back,
+      tags: [],
+      easeFactor: 2.5,
+      interval: 0,
+      repetitions: 0,
+      nextReview: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    setFlashcardToast(`Karteikarte zu "${deck.name}" hinzugefügt!`);
+    setTimeout(() => setFlashcardToast(''), 3000);
+  };
+
+  const handleAIFlashcards = async (cards: Array<{ front: string; back: string }>) => {
+    for (const card of cards) {
+      await handleAddFlashcard(card.front, card.back);
+    }
   };
 
   const startEdit = (note: TheoryNote) => {
@@ -243,8 +283,27 @@ export default function TheoriePage() {
           )
         )}
 
+        {/* Flashcard actions (non-editing mode) */}
+        {!editing && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowNoteToCards(true)}
+              className="btn-secondary text-sm flex items-center gap-2"
+            >
+              <Sparkles size={14} />
+              Mit KI zu Karteikarten
+            </button>
+            <p className="text-xs text-neutral-400 self-center">
+              Tipp: Text markieren + Rechtsklick = einzelne Karteikarte
+            </p>
+          </div>
+        )}
+
         {/* Editor */}
-        <div className="min-h-[300px] sm:min-h-[500px] rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-white dark:bg-neutral-800">
+        <div
+          ref={editorContainerRef}
+          className="min-h-[300px] sm:min-h-[500px] rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-white dark:bg-neutral-800"
+        >
           <NotionEditor
             key={`${selectedNote.id}-${editing}`}
             content={editing ? editContent : selectedNote.content}
@@ -252,6 +311,30 @@ export default function TheoriePage() {
             editable={editing}
           />
         </div>
+
+        {/* Context menu for text selection → flashcard */}
+        <SelectionContextMenu
+          onAddFlashcard={handleAddFlashcard}
+          containerRef={editorContainerRef}
+        />
+
+        {/* Toast */}
+        {flashcardToast && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 card shadow-lg px-4 py-3 flex items-center gap-2 animate-slide-in">
+            <Layers size={16} className="text-primary-600" />
+            <span className="text-sm text-neutral-900 dark:text-white">{flashcardToast}</span>
+          </div>
+        )}
+
+        {/* Note to flashcards AI modal */}
+        {showNoteToCards && (
+          <NoteToFlashcards
+            noteTitle={selectedNote.title}
+            noteContent={selectedNote.content}
+            onGenerate={handleAIFlashcards}
+            onClose={() => setShowNoteToCards(false)}
+          />
+        )}
 
         {showAI && (
           <AIGenerateModal type="summary" onGenerate={handleAISummary} onClose={() => setShowAI(false)} />
