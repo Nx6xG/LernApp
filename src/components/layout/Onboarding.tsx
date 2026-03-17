@@ -1,41 +1,69 @@
 'use client';
 
-import { useState } from 'react';
-import { Sparkles, Layers, HelpCircle, BookOpen, Users, ArrowRight, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import {
+  Sparkles,
+  Layers,
+  HelpCircle,
+  BookOpen,
+  Users,
+  ArrowRight,
+  Check,
+  Target,
+  Search,
+  X,
+} from 'lucide-react';
 
-const steps = [
+interface Step {
+  icon: typeof Sparkles;
+  color: string;
+  title: string;
+  description: string;
+  details: string[];
+  route: string;
+  cta: string;
+}
+
+const steps: Step[] = [
   {
     icon: Sparkles,
     color: 'bg-primary-100 dark:bg-primary-900/30 text-primary-600',
     title: 'Willkommen bei LernApp!',
-    description: 'Dein persönlicher Lernbegleiter mit bewährten Lernmethoden.',
+    description: 'Dein persönlicher Lernbegleiter. Lass uns eine kurze Tour machen!',
     details: [
       'Erstelle Arbeitsbereiche für verschiedene Fächer',
       'Lade Freunde ein, um gemeinsam zu lernen',
       'Nutze KI um Lerninhalte automatisch zu generieren',
     ],
+    route: '/dashboard',
+    cta: 'Tour starten',
   },
   {
     icon: Layers,
     color: 'bg-green-100 dark:bg-green-900/30 text-green-600',
-    title: 'Karteikarten mit Spaced Repetition',
-    description: 'Der SM-2 Algorithmus zeigt dir Karten genau dann, wenn du sie wiederholen solltest.',
+    title: 'Karteikarten',
+    description: 'Erstelle Stapel und lerne mit Spaced Repetition.',
     details: [
       'Erstelle Stapel für verschiedene Themen',
       'Bewerte dein Wissen: Nochmal, Schwer, Gut, Einfach',
-      'Tastenkürzel: Leertaste = Umdrehen, 1-4 = Bewerten',
+      'Leertaste = Umdrehen, 1-4 = Bewerten',
     ],
+    route: '/karteikarten',
+    cta: 'Karteikarten öffnen',
   },
   {
     icon: HelpCircle,
     color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600',
-    title: 'Quizze & Active Recall',
+    title: 'Quizze',
     description: 'Teste dein Wissen mit verschiedenen Fragetypen.',
     details: [
       'Multiple Choice, Wahr/Falsch, Freitext',
       'KI kann Quizfragen automatisch generieren',
-      'Erklärungen zu jeder Antwort',
+      'Erklärungen nach jeder Antwort',
     ],
+    route: '/quiz',
+    cta: 'Quiz öffnen',
   },
   {
     icon: BookOpen,
@@ -47,6 +75,21 @@ const steps = [
       'Tags zum Organisieren (z.B. Netzwerktechnik, Mathe)',
       'Tippe / für das Block-Menü',
     ],
+    route: '/theorie',
+    cta: 'Theorie öffnen',
+  },
+  {
+    icon: Target,
+    color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600',
+    title: 'Lernziele & Fortschritt',
+    description: 'Setze dir Ziele und verfolge deinen Fortschritt mit Charts.',
+    details: [
+      'Meilensteine für jedes Ziel',
+      'Tages- und Wochen-Statistiken',
+      'Streak-Tracking für tägliches Lernen',
+    ],
+    route: '/fortschritt',
+    cta: 'Fortschritt öffnen',
   },
   {
     icon: Users,
@@ -54,10 +97,25 @@ const steps = [
     title: 'Zusammenarbeit',
     description: 'Lerne nicht alleine — arbeite in Echtzeit mit anderen.',
     details: [
-      'Erstelle Arbeitsbereiche und lade Leute per E-Mail ein',
+      'Arbeitsbereiche mit E-Mail-Einladungen',
       'Alle Mitglieder sehen die gleichen Inhalte',
       'Echtzeit-Lernsessions',
     ],
+    route: '/zusammenarbeit',
+    cta: 'Zusammenarbeit öffnen',
+  },
+  {
+    icon: Search,
+    color: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
+    title: 'Tipp: Schnellsuche',
+    description: 'Drücke Ctrl+K um jederzeit nach Inhalten zu suchen.',
+    details: [
+      'Durchsucht Stapel, Quizze, Notizen und Ziele',
+      'Funktioniert von jeder Seite aus',
+      'Probier es aus!',
+    ],
+    route: '/dashboard',
+    cta: 'Tour abschließen',
   },
 ];
 
@@ -67,63 +125,128 @@ interface Props {
 
 export function Onboarding({ onComplete }: Props) {
   const [step, setStep] = useState(0);
+  const [waitingForRoute, setWaitingForRoute] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
   const current = steps[step];
   const Icon = current.icon;
   const isLast = step === steps.length - 1;
 
+  // When waiting for route change, advance once we arrive
+  useEffect(() => {
+    if (waitingForRoute && pathname === current.route) {
+      setWaitingForRoute(false);
+    }
+  }, [pathname, waitingForRoute, current.route]);
+
+  const handleNext = () => {
+    if (isLast) {
+      onComplete();
+      router.push('/dashboard');
+      return;
+    }
+
+    const nextStep = steps[step + 1];
+    // Navigate to the next step's route
+    if (pathname !== nextStep.route) {
+      router.push(nextStep.route);
+      setWaitingForRoute(true);
+    }
+    setStep(step + 1);
+  };
+
+  const handleCTA = () => {
+    // Navigate to current step's route if not already there
+    if (pathname !== current.route) {
+      router.push(current.route);
+      setWaitingForRoute(true);
+    }
+    // For the first step ("Tour starten") and last step, advance
+    if (step === 0 || isLast) {
+      handleNext();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="card w-full max-w-lg overflow-hidden">
-        {/* Progress dots */}
-        <div className="flex items-center justify-center gap-2 pt-6">
-          {steps.map((_, i) => (
-            <div
-              key={i}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                i === step ? 'bg-primary-600' : i < step ? 'bg-primary-300' : 'bg-neutral-200 dark:bg-neutral-600'
-              }`}
-            />
-          ))}
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
+      <div className="card shadow-2xl border-primary-200 dark:border-primary-800 overflow-hidden">
+        {/* Progress bar */}
+        <div className="h-1 bg-neutral-100 dark:bg-neutral-700">
+          <div
+            className="h-1 bg-primary-600 transition-all duration-500"
+            style={{ width: `${((step + 1) / steps.length) * 100}%` }}
+          />
         </div>
 
-        {/* Content */}
-        <div className="p-8 text-center">
-          <div className={`w-16 h-16 rounded-2xl ${current.color} flex items-center justify-center mx-auto mb-6`}>
-            <Icon size={32} />
-          </div>
-          <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
-            {current.title}
-          </h2>
-          <p className="text-neutral-500 mb-6">{current.description}</p>
+        <div className="p-5">
+          <div className="flex items-start gap-4">
+            {/* Icon */}
+            <div className={`w-11 h-11 rounded-xl ${current.color} flex items-center justify-center flex-shrink-0`}>
+              <Icon size={22} />
+            </div>
 
-          <div className="text-left space-y-3 mb-8">
-            {current.details.map((detail, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <Check size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
-                <span className="text-sm text-neutral-700 dark:text-neutral-300">{detail}</span>
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs text-neutral-400 mb-0.5">
+                    Schritt {step + 1} von {steps.length}
+                  </p>
+                  <h3 className="font-semibold text-neutral-900 dark:text-white">
+                    {current.title}
+                  </h3>
+                </div>
+                <button
+                  onClick={onComplete}
+                  className="p-1 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 flex-shrink-0"
+                  title="Tour beenden"
+                >
+                  <X size={16} />
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Actions */}
-        <div className="px-8 pb-8 flex items-center justify-between">
-          <button
-            onClick={onComplete}
-            className="text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
-          >
-            Überspringen
-          </button>
-          <button
-            onClick={() => {
-              if (isLast) onComplete();
-              else setStep(step + 1);
-            }}
-            className="btn-primary flex items-center gap-2"
-          >
-            {isLast ? 'Loslegen!' : 'Weiter'}
-            <ArrowRight size={16} />
-          </button>
+              <p className="text-sm text-neutral-500 mt-1">{current.description}</p>
+
+              {/* Details */}
+              <div className="mt-3 space-y-1.5">
+                {current.details.map((detail, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <Check size={13} className="text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-neutral-600 dark:text-neutral-400">{detail}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 mt-4">
+                {step === 0 ? (
+                  <button onClick={handleCTA} className="btn-primary text-sm py-1.5 flex items-center gap-2">
+                    {current.cta}
+                    <ArrowRight size={14} />
+                  </button>
+                ) : (
+                  <>
+                    {pathname !== current.route && (
+                      <button onClick={handleCTA} className="btn-primary text-sm py-1.5 flex items-center gap-2">
+                        {current.cta}
+                        <ArrowRight size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={handleNext}
+                      className={`${pathname === current.route ? 'btn-primary' : 'btn-secondary'} text-sm py-1.5 flex items-center gap-2`}
+                    >
+                      {isLast ? 'Fertig!' : 'Weiter'}
+                      <ArrowRight size={14} />
+                    </button>
+                  </>
+                )}
+                <span className="text-xs text-neutral-400">
+                  oder <button onClick={onComplete} className="underline hover:text-neutral-600">überspringen</button>
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
