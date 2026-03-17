@@ -96,7 +96,23 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: () => {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), async (user) => {
       if (user) {
-        const profile = await getUserProfile(user.uid);
+        let profile = await getUserProfile(user.uid);
+
+        // Auto-create profile for existing users who don't have one
+        if (!profile) {
+          profile = {
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || user.email?.split('@')[0] || 'Benutzer',
+            dailyGoalMinutes: 30,
+            preferredLanguage: 'de',
+            createdAt: new Date().toISOString(),
+            streak: 0,
+            totalStudyMinutes: 0,
+          };
+          await createUserProfile(profile);
+        }
+
         set({ user, profile, loading: false });
       } else {
         set({ user: null, profile: null, loading: false });

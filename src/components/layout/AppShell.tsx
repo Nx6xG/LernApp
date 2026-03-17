@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 import { Sidebar } from './Sidebar';
+import { Onboarding } from './Onboarding';
 import { redirect } from 'next/navigation';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, profile } = useAuthStore();
   const { isLoading: wsLoading, currentWorkspaceId, initializeWorkspaces, loadInvites } =
     useWorkspaceStore();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -17,19 +19,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [user, authLoading]);
 
-  // Initialize workspaces after auth is ready
   useEffect(() => {
     if (user && !authLoading) {
       initializeWorkspaces(user.uid);
     }
   }, [user, authLoading]);
 
-  // Load pending invites
   useEffect(() => {
     if (profile?.email) {
       loadInvites(profile.email);
     }
   }, [profile?.email]);
+
+  // Show onboarding for new users (check localStorage)
+  useEffect(() => {
+    if (user && !authLoading && !wsLoading) {
+      const key = `lernapp_onboarded_${user.uid}`;
+      if (!localStorage.getItem(key)) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [user, authLoading, wsLoading]);
+
+  const completeOnboarding = () => {
+    if (user) {
+      localStorage.setItem(`lernapp_onboarded_${user.uid}`, 'true');
+    }
+    setShowOnboarding(false);
+  };
 
   if (authLoading || wsLoading) {
     return (
@@ -46,6 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
+      {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
       <Sidebar />
       <main className="lg:ml-64 min-h-screen">
         <div className="p-6 lg:p-8 pt-16 lg:pt-8">{children}</div>

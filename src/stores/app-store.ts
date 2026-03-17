@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import type { Deck, Flashcard, Quiz, TheoryNote, Subject, LearningGoal, StudySession } from '@/types';
 import * as firestore from '@/lib/firestore';
+import { updateStreak } from '@/lib/streak';
 
 interface AppState {
   // Data
@@ -228,6 +229,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ===== Session Logging =====
   logSession: async (session) => {
     await firestore.logStudySession(session);
+    // Update streak
+    await updateStreak(session.userId).catch(() => {});
+    // Update total study minutes on profile
+    await firestore.updateUserProfile(session.userId, {
+      totalStudyMinutes: ((await firestore.getUserProfile(session.userId))?.totalStudyMinutes || 0) + session.duration,
+    } as any).catch(() => {});
     set((s) => ({
       studySessions: [{ ...session, id: Date.now().toString() } as StudySession, ...s.studySessions],
     }));

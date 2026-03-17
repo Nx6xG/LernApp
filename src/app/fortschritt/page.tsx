@@ -1,10 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useWorkspaceContext } from '@/hooks/useWorkspaceContext';
 import { useAppStore } from '@/stores/app-store';
 import { Plus, Target, CheckCircle2, Circle, Clock, TrendingUp, Flame } from 'lucide-react';
 import type { LearningGoal, Milestone } from '@/types';
+import dynamic from 'next/dynamic';
+
+const StudyChart = dynamic(() => import('@/components/fortschritt/StudyChart').then((m) => m.StudyChart), {
+  ssr: false,
+  loading: () => <div className="h-64 card flex items-center justify-center text-neutral-400">Laden...</div>,
+});
 
 export default function FortschrittPage() {
   const { uid, profile, workspaceId } = useWorkspaceContext();
@@ -29,7 +35,6 @@ export default function FortschrittPage() {
     const ms: Milestone[] = milestones
       .filter(Boolean)
       .map((title, i) => ({ id: `${Date.now()}-${i}`, title, completed: false }));
-
     await addLearningGoal({
       workspaceId,
       userId: uid,
@@ -67,7 +72,6 @@ export default function FortschrittPage() {
   );
   const totalMinutes7d = last7Days.reduce((acc, s) => acc + s.duration, 0);
   const totalCards7d = last7Days.reduce((acc, s) => acc + (s.cardsStudied || 0), 0);
-
   const activeGoals = learningGoals.filter((g) => g.status === 'active');
   const completedGoals = learningGoals.filter((g) => g.status === 'completed');
 
@@ -110,6 +114,9 @@ export default function FortschrittPage() {
         </div>
       </div>
 
+      {/* Chart */}
+      <StudyChart sessions={studySessions} />
+
       {/* Learning Goals */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -142,20 +149,11 @@ export default function FortschrittPage() {
                   <input
                     className="input flex-1"
                     value={ms}
-                    onChange={(e) => {
-                      const updated = [...milestones];
-                      updated[i] = e.target.value;
-                      setMilestones(updated);
-                    }}
+                    onChange={(e) => { const u = [...milestones]; u[i] = e.target.value; setMilestones(u); }}
                     placeholder={`Meilenstein ${i + 1}`}
                   />
                   {i === milestones.length - 1 && (
-                    <button
-                      onClick={() => setMilestones([...milestones, ''])}
-                      className="text-primary-600 text-sm whitespace-nowrap"
-                    >
-                      + Mehr
-                    </button>
+                    <button onClick={() => setMilestones([...milestones, ''])} className="text-primary-600 text-sm whitespace-nowrap">+ Mehr</button>
                   )}
                 </div>
               ))}
@@ -178,29 +176,18 @@ export default function FortschrittPage() {
                 <span className="text-sm font-medium text-primary-600">{goal.progress}%</span>
               </div>
               <div className="w-full bg-neutral-100 dark:bg-neutral-700 rounded-full h-2.5 mb-4">
-                <div
-                  className="bg-primary-600 h-2.5 rounded-full transition-all"
-                  style={{ width: `${goal.progress}%` }}
-                />
+                <div className="bg-primary-600 h-2.5 rounded-full transition-all" style={{ width: `${goal.progress}%` }} />
               </div>
               {goal.milestones.length > 0 && (
                 <div className="space-y-2">
                   {goal.milestones.map((ms) => (
-                    <button
-                      key={ms.id}
-                      onClick={() => toggleMilestone(goal.id, ms.id)}
-                      className="flex items-center gap-3 w-full text-left py-1 group"
-                    >
+                    <button key={ms.id} onClick={() => toggleMilestone(goal.id, ms.id)} className="flex items-center gap-3 w-full text-left py-1 group">
                       {ms.completed ? (
                         <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" />
                       ) : (
                         <Circle size={18} className="text-neutral-300 group-hover:text-primary-400 flex-shrink-0" />
                       )}
-                      <span
-                        className={`text-sm ${
-                          ms.completed ? 'line-through text-neutral-400' : 'text-neutral-700 dark:text-neutral-300'
-                        }`}
-                      >
+                      <span className={`text-sm ${ms.completed ? 'line-through text-neutral-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
                         {ms.title}
                       </span>
                     </button>
@@ -208,9 +195,7 @@ export default function FortschrittPage() {
                 </div>
               )}
               {goal.targetDate && (
-                <p className="text-xs text-neutral-400 mt-3">
-                  Ziel bis: {new Date(goal.targetDate).toLocaleDateString('de-DE')}
-                </p>
+                <p className="text-xs text-neutral-400 mt-3">Ziel bis: {new Date(goal.targetDate).toLocaleDateString('de-DE')}</p>
               )}
             </div>
           ))}
@@ -236,9 +221,7 @@ export default function FortschrittPage() {
           <div className="text-center py-12">
             <Target size={32} className="text-neutral-300 mx-auto mb-3" />
             <p className="text-neutral-500 mb-3">Setze dir Lernziele, um deinen Fortschritt zu verfolgen.</p>
-            <button onClick={() => setShowNew(true)} className="btn-primary text-sm">
-              Erstes Ziel setzen
-            </button>
+            <button onClick={() => setShowNew(true)} className="btn-primary text-sm">Erstes Ziel setzen</button>
           </div>
         )}
       </div>

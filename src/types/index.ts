@@ -215,6 +215,9 @@ export interface UserProfile {
   email: string;
   displayName: string;
   photoURL?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
   dailyGoalMinutes: number;
   preferredLanguage: string;
   createdAt: string;

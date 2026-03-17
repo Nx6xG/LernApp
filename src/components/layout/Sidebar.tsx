@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -13,10 +14,12 @@ import {
   LogOut,
   Menu,
   X,
+  Search,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAppStore } from '@/stores/app-store';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { SearchModal } from './SearchModal';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,9 +36,24 @@ export function Sidebar() {
   const signOut = useAuthStore((s) => s.signOut);
   const profile = useAuthStore((s) => s.profile);
   const { sidebarOpen, toggleSidebar } = useAppStore();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Ctrl+K / Cmd+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <>
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+
       {/* Mobile menu button */}
       <button
         onClick={toggleSidebar}
@@ -65,6 +83,20 @@ export function Sidebar() {
             <WorkspaceSwitcher />
           </div>
 
+          {/* Search */}
+          <div className="px-3 pt-3">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
+            >
+              <Search size={16} />
+              <span className="flex-1 text-left">Suche...</span>
+              <kbd className="hidden sm:inline-flex px-1.5 py-0.5 text-xs bg-neutral-100 dark:bg-neutral-700 rounded">
+                Ctrl+K
+              </kbd>
+            </button>
+          </div>
+
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
@@ -92,17 +124,21 @@ export function Sidebar() {
 
           {/* User section */}
           <div className="p-4 border-t border-neutral-200 dark:border-neutral-700">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary-700 dark:text-primary-300">
+            <Link
+              href="/profil"
+              className="flex items-center gap-3 mb-3 px-2 py-2 -mx-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors group"
+              onClick={() => { if (window.innerWidth < 1024) toggleSidebar(); }}
+            >
+              <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary-700 dark:text-primary-300 flex-shrink-0">
                 {profile?.displayName?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
+                <p className="text-sm font-medium text-neutral-900 dark:text-white truncate group-hover:text-primary-600 transition-colors">
                   {profile?.displayName || 'Benutzer'}
                 </p>
                 <p className="text-xs text-neutral-500 truncate">{profile?.email}</p>
               </div>
-            </div>
+            </Link>
             <button
               onClick={signOut}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"

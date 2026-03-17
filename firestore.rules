@@ -1,0 +1,86 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if user is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: check if user is a member of a workspace
+    function isWorkspaceMember(workspaceId) {
+      return isAuth() &&
+        request.auth.uid in get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.memberIds;
+    }
+
+    // Helper: check if user is owner/admin of a workspace
+    function isWorkspaceAdmin(workspaceId) {
+      let ws = get(/databases/$(database)/documents/workspaces/$(workspaceId)).data;
+      return isAuth() && (
+        ws.ownerId == request.auth.uid ||
+        request.auth.uid in ws.memberIds // simplified — full role check needs member array iteration
+      );
+    }
+
+    // User profiles: only the user themselves can read/write
+    match /users/{userId} {
+      allow read, write: if isAuth() && request.auth.uid == userId;
+    }
+
+    // Workspaces: members can read, owner can write
+    match /workspaces/{workspaceId} {
+      allow read: if isAuth() &&
+        request.auth.uid in resource.data.memberIds;
+      allow create: if isAuth();
+      allow update, delete: if isAuth() &&
+        resource.data.ownerId == request.auth.uid;
+    }
+
+    // Workspace invites
+    match /workspaceInvites/{inviteId} {
+      allow read: if isAuth() &&
+        (resource.data.invitedEmail == request.auth.token.email ||
+         resource.data.invitedBy == request.auth.uid);
+      allow create: if isAuth();
+      allow update: if isAuth() &&
+        (resource.data.invitedEmail == request.auth.token.email ||
+         resource.data.invitedBy == request.auth.uid);
+    }
+
+    // All workspace-scoped content: members can read/write
+    match /decks/{docId} {
+      allow read, write: if isAuth() && isWorkspaceMember(resource.data.workspaceId);
+      allow create: if isAuth();
+    }
+
+    match /flashcards/{docId} {
+      allow read, write: if isAuth();
+    }
+
+    match /quizzes/{docId} {
+      allow read, write: if isAuth() && isWorkspaceMember(resource.data.workspaceId);
+      allow create: if isAuth();
+    }
+
+    match /theoryNotes/{docId} {
+      allow read, write: if isAuth() && isWorkspaceMember(resource.data.workspaceId);
+      allow create: if isAuth();
+    }
+
+    match /subjects/{docId} {
+      allow read, write: if isAuth() && isWorkspaceMember(resource.data.workspaceId);
+      allow create: if isAuth();
+    }
+
+    match /learningGoals/{docId} {
+      allow read, write: if isAuth() && isWorkspaceMember(resource.data.workspaceId);
+      allow create: if isAuth();
+    }
+
+    match /studySessions/{docId} {
+      allow read, write: if isAuth() && isWorkspaceMember(resource.data.workspaceId);
+      allow create: if isAuth();
+    }
+  }
+}

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, RotateCcw } from 'lucide-react';
 import type { Flashcard } from '@/types';
 import { calculateSM2, difficultyToQuality } from '@/lib/spaced-repetition';
 import { useAppStore } from '@/stores/app-store';
+import { useWorkspaceContext } from '@/hooks/useWorkspaceContext';
 
 interface Props {
   cards: Flashcard[];
@@ -14,12 +15,53 @@ interface Props {
 
 export function FlashcardStudy({ cards, deckName, onExit }: Props) {
   const editFlashcard = useAppStore((s) => s.editFlashcard);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const logSession = useAppStore((s) => s.logSession);
+  const { uid, workspaceId } = useWorkspaceContext();
+
   const [isFlipped, setIsFlipped] = useState(false);
   const [completed, setCompleted] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
   const [remaining, setRemaining] = useState([...cards]);
+  const startTime = useRef(Date.now());
 
   const currentCard = remaining[0];
+
+  // Log session when done
+  const handleExit = useCallback(async () => {
+    if (completed > 0 && uid && workspaceId) {
+      const duration = Math.round((Date.now() - startTime.current) / 60000);
+      await logSession({
+        workspaceId,
+        userId: uid,
+        type: 'flashcard',
+        duration: Math.max(1, duration),
+        cardsStudied: completed,
+        correctAnswers: correctCount,
+        totalAnswers: completed,
+        date: new Date().toISOString(),
+      });
+    }
+    onExit();
+  }, [completed, correctCount, uid, workspaceId, logSession, onExit]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!currentCard) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsFlipped((f) => !f);
+      }
+      if (isFlipped) {
+        if (e.key === '1') handleRate('again');
+        if (e.key === '2') handleRate('hard');
+        if (e.key === '3') handleRate('good');
+        if (e.key === '4') handleRate('easy');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [currentCard, isFlipped]);
 
   if (!currentCard || remaining.length === 0) {
     return (
@@ -27,13 +69,15 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
         <div className="w-20 h-20 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-6">
           <span className="text-4xl">🎉</span>
         </div>
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-          Geschafft!
-        </h2>
-        <p className="text-neutral-500 mb-6">
+        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">Geschafft!</h2>
+        <p className="text-neutral-500 mb-2">
           Du hast {completed} Karten aus &quot;{deckName}&quot; wiederholt.
         </p>
-        <button onClick={onExit} className="btn-primary">
+        <p className="text-sm text-neutral-400 mb-6">
+          {correctCount}/{completed} richtig &middot;{' '}
+          {Math.round((Date.now() - startTime.current) / 60000)} Min.
+        </p>
+        <button onClick={handleExit} className="btn-primary">
           Zurück zum Stapel
         </button>
       </div>
@@ -58,11 +102,11 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
       updatedAt: new Date().toISOString(),
     });
 
+    if (difficulty !== 'again') setCorrectCount((c) => c + 1);
     setCompleted((c) => c + 1);
     setIsFlipped(false);
 
     if (difficulty === 'again') {
-      // Move to end of queue
       setRemaining((prev) => [...prev.slice(1), prev[0]]);
     } else {
       setRemaining((prev) => prev.slice(1));
@@ -81,7 +125,7 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
             {completed} von {cards.length} Karten &middot; {remaining.length} verbleibend
           </p>
         </div>
-        <button onClick={onExit} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg">
+        <button onClick={handleExit} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg">
           <X size={20} />
         </button>
       </div>
@@ -100,16 +144,13 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
           className={`flashcard-inner relative min-h-[300px] cursor-pointer ${isFlipped ? 'flipped' : ''}`}
           onClick={() => setIsFlipped(!isFlipped)}
         >
-          {/* Front */}
           <div className="flashcard-front absolute inset-0 card p-8 flex flex-col items-center justify-center">
             <p className="text-xs uppercase tracking-wider text-neutral-400 mb-4">Frage</p>
             <p className="text-xl text-center text-neutral-900 dark:text-white font-medium">
               {currentCard.front}
             </p>
-            <p className="text-sm text-neutral-400 mt-6">Tippe zum Umdrehen</p>
+            <p className="text-sm text-neutral-400 mt-6">Leertaste oder tippen zum Umdrehen</p>
           </div>
-
-          {/* Back */}
           <div className="flashcard-back absolute inset-0 card p-8 flex flex-col items-center justify-center bg-primary-50 dark:bg-primary-900/10">
             <p className="text-xs uppercase tracking-wider text-primary-500 mb-4">Antwort</p>
             <p className="text-xl text-center text-neutral-900 dark:text-white font-medium">
@@ -119,7 +160,7 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
         </div>
       </div>
 
-      {/* Rating buttons - only show when flipped */}
+      {/* Rating buttons */}
       {isFlipped && (
         <div className="grid grid-cols-4 gap-3 animate-fade-in">
           <button
@@ -128,7 +169,7 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
           >
             <RotateCcw size={18} className="text-red-500" />
             <span className="text-sm font-medium text-red-600 dark:text-red-400">Nochmal</span>
-            <span className="text-xs text-red-400">&lt;1 Min.</span>
+            <span className="text-xs text-red-400">1</span>
           </button>
           <button
             onClick={() => handleRate('hard')}
@@ -136,7 +177,7 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
           >
             <span className="text-lg">😓</span>
             <span className="text-sm font-medium text-orange-600 dark:text-orange-400">Schwer</span>
-            <span className="text-xs text-orange-400">1 Tag</span>
+            <span className="text-xs text-orange-400">2</span>
           </button>
           <button
             onClick={() => handleRate('good')}
@@ -144,9 +185,7 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
           >
             <span className="text-lg">😊</span>
             <span className="text-sm font-medium text-green-600 dark:text-green-400">Gut</span>
-            <span className="text-xs text-green-400">
-              {currentCard.interval > 0 ? `${Math.round(currentCard.interval * currentCard.easeFactor)} Tage` : '6 Tage'}
-            </span>
+            <span className="text-xs text-green-400">3</span>
           </button>
           <button
             onClick={() => handleRate('easy')}
@@ -154,12 +193,15 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
           >
             <span className="text-lg">🧠</span>
             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Einfach</span>
-            <span className="text-xs text-blue-400">
-              {currentCard.interval > 0 ? `${Math.round(currentCard.interval * currentCard.easeFactor * 1.3)} Tage` : '10 Tage'}
-            </span>
+            <span className="text-xs text-blue-400">4</span>
           </button>
         </div>
       )}
+
+      {/* Shortcut hint */}
+      <p className="text-center text-xs text-neutral-400">
+        Leertaste = Umdrehen &middot; 1-4 = Bewerten
+      </p>
     </div>
   );
 }
