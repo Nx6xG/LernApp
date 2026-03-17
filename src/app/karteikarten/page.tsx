@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useWorkspaceContext } from '@/hooks/useWorkspaceContext';
 import { useAppStore } from '@/stores/app-store';
-import { Plus, Play, Trash2, Edit2, Sparkles, Layers } from 'lucide-react';
+import { Plus, Play, Trash2, Edit2, Sparkles, Layers, Upload } from 'lucide-react';
 import type { Deck, Flashcard } from '@/types';
 import { FlashcardStudy } from '@/components/karteikarten/FlashcardStudy';
 import { AIGenerateModal } from '@/components/ui/AIGenerateModal';
+import { BulkImport } from '@/components/karteikarten/BulkImport';
 
 export default function KarteikartenPage() {
   const { uid, workspaceId } = useWorkspaceContext();
@@ -21,6 +22,7 @@ export default function KarteikartenPage() {
   const [newCardFront, setNewCardFront] = useState('');
   const [newCardBack, setNewCardBack] = useState('');
   const [showAI, setShowAI] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
 
   useEffect(() => {
     if (workspaceId) loadDecks(workspaceId);
@@ -89,6 +91,25 @@ export default function KarteikartenPage() {
     setShowAI(false);
   };
 
+  const handleBulkImport = async (cards: Array<{ front: string; back: string }>) => {
+    if (!selectedDeck) return;
+    for (const card of cards) {
+      await addFlashcard({
+        deckId: selectedDeck.id,
+        front: card.front,
+        back: card.back,
+        tags: [],
+        easeFactor: 2.5,
+        interval: 0,
+        repetitions: 0,
+        nextReview: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    setShowBulk(false);
+  };
+
   const currentCards = selectedDeck ? flashcards[selectedDeck.id] || [] : [];
   const dueCards = currentCards.filter((c) => new Date(c.nextReview) <= new Date());
 
@@ -123,10 +144,13 @@ export default function KarteikartenPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button onClick={() => setShowBulk(true)} className="btn-secondary flex items-center gap-2">
+              <Upload size={16} />
+              <span className="hidden sm:inline">Import</span>
+            </button>
             <button onClick={() => setShowAI(true)} className="btn-secondary flex items-center gap-2">
               <Sparkles size={16} />
-              <span className="hidden sm:inline">KI-Generierung</span>
-              <span className="sm:hidden">KI</span>
+              <span className="hidden sm:inline">KI</span>
             </button>
             <button
               onClick={() => setStudyMode(true)}
@@ -207,6 +231,14 @@ export default function KarteikartenPage() {
             type="flashcards"
             onGenerate={handleAIGenerated}
             onClose={() => setShowAI(false)}
+          />
+        )}
+
+        {/* Bulk Import Modal */}
+        {showBulk && (
+          <BulkImport
+            onImport={handleBulkImport}
+            onClose={() => setShowBulk(false)}
           />
         )}
       </div>

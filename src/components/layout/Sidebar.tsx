@@ -15,9 +15,13 @@ import {
   Menu,
   X,
   Search,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAppStore } from '@/stores/app-store';
+import { useTheme } from '@/hooks/useTheme';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SearchModal } from './SearchModal';
 
@@ -36,6 +40,7 @@ export function Sidebar() {
   const signOut = useAuthStore((s) => s.signOut);
   const profile = useAuthStore((s) => s.profile);
   const { sidebarOpen, toggleSidebar } = useAppStore();
+  const { theme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Ctrl+K / Cmd+K shortcut
@@ -121,6 +126,39 @@ export function Sidebar() {
               );
             })}
           </nav>
+
+          {/* Theme toggle */}
+          <div className="px-3 pb-2">
+            <div className="flex items-center bg-neutral-100 dark:bg-neutral-700 rounded-lg p-1">
+              <button
+                onClick={() => setTheme('light')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  theme === 'light' ? 'bg-white dark:bg-neutral-600 shadow-sm text-neutral-900 dark:text-white' : 'text-neutral-500'
+                }`}
+              >
+                <Sun size={13} />
+                Hell
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  theme === 'dark' ? 'bg-white dark:bg-neutral-600 shadow-sm text-neutral-900 dark:text-white' : 'text-neutral-500'
+                }`}
+              >
+                <Moon size={13} />
+                Dunkel
+              </button>
+              <button
+                onClick={() => setTheme('system')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  theme === 'system' ? 'bg-white dark:bg-neutral-600 shadow-sm text-neutral-900 dark:text-white' : 'text-neutral-500'
+                }`}
+              >
+                <Monitor size={13} />
+                Auto
+              </button>
+            </div>
+          </div>
 
           {/* User section */}
           <div className="p-4 border-t border-neutral-200 dark:border-neutral-700">

@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useWorkspaceContext } from '@/hooks/useWorkspaceContext';
 import { useAppStore } from '@/stores/app-store';
-import { Plus, Play, Trash2, Sparkles, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
-import type { Quiz, QuizQuestion, QuestionType } from '@/types';
+import { Plus, Play, Trash2, Sparkles, CheckCircle2, XCircle, HelpCircle, History, TrendingUp } from 'lucide-react';
+import type { Quiz, QuizQuestion, QuestionType, QuizAttempt } from '@/types';
 import { AIGenerateModal } from '@/components/ui/AIGenerateModal';
+import { saveQuizAttempt, getQuizAttempts } from '@/lib/firestore';
 
 export default function QuizPage() {
   const { uid, workspaceId } = useWorkspaceContext();
@@ -33,9 +34,20 @@ export default function QuizPage() {
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [answerRevealed, setAnswerRevealed] = useState(false);
 
+  // History
+  const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
   useEffect(() => {
     if (workspaceId) loadQuizzes(workspaceId);
   }, [workspaceId]);
+
+  // Load attempts when quiz is selected
+  useEffect(() => {
+    if (selectedQuiz) {
+      getQuizAttempts(selectedQuiz.id).then(setAttempts).catch(() => {});
+    }
+  }, [selectedQuiz?.id]);
 
   const handleCreateQuiz = async () => {
     if (!uid || !workspaceId || !newTitle.trim()) return;
@@ -126,25 +138,72 @@ export default function QuizPage() {
       ).length
     : 0;
 
+  // Save attempt when result is shown
+  const [attemptSaved, setAttemptSaved] = useState(false);
+  useEffect(() => {
+    if (showResult && selectedQuiz && uid && !attemptSaved) {
+      const maxScore = selectedQuiz.questions.length;
+      saveQuizAttempt({
+        quizId: selectedQuiz.id,
+        userId: uid,
+        answers,
+        score,
+        maxScore,
+        completedAt: new Date().toISOString(),
+      }).then(() => {
+        setAttemptSaved(true);
+        getQuizAttempts(selectedQuiz.id).then(setAttempts);
+        // Update quiz stats
+        const totalCompleted = (selectedQuiz.timesCompleted || 0) + 1;
+        const avgScore = Math.round(
+          ((selectedQuiz.averageScore || 0) * (totalCompleted - 1) + (score / maxScore) * 100) / totalCompleted
+        );
+        editQuiz(selectedQuiz.id, { timesCompleted: totalCompleted, averageScore: avgScore });
+      });
+    }
+  }, [showResult, attemptSaved]);
+
   // Play mode
   if (playMode && selectedQuiz && currentQuestion) {
     if (showResult) {
+      const pct = Math.round((score / selectedQuiz.questions.length) * 100);
       return (
         <div className="max-w-lg mx-auto text-center py-16">
           <div className="w-20 h-20 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-6">
-            <span className="text-4xl">{score / selectedQuiz.questions.length >= 0.7 ? '🎉' : '💪'}</span>
+            <span className="text-4xl">{pct >= 70 ? '🎉' : '💪'}</span>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Ergebnis: {score} / {selectedQuiz.questions.length}
           </h2>
-          <p className="text-neutral-500 mb-2">
-            {Math.round((score / selectedQuiz.questions.length) * 100)}% richtig
-          </p>
+          <p className="text-neutral-500 mb-2">{pct}% richtig</p>
           <p className="text-sm text-neutral-400 mb-6">
-            {score / selectedQuiz.questions.length >= 0.7
-              ? 'Großartige Leistung! Weiter so!'
-              : 'Übung macht den Meister. Versuch es nochmal!'}
+            {pct >= 70 ? 'Großartige Leistung! Weiter so!' : 'Übung macht den Meister. Versuch es nochmal!'}
           </p>
+
+          {/* Previous attempts */}
+          {attempts.length > 1 && (
+            <div className="mb-6 text-left">
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2 flex items-center gap-2">
+                <TrendingUp size={14} />
+                Deine letzten Versuche
+              </p>
+              <div className="flex items-end gap-1 h-16">
+                {attempts.slice(0, 10).reverse().map((a, i) => {
+                  const aPct = a.maxScore > 0 ? (a.score / a.maxScore) * 100 : 0;
+                  return (
+                    <div key={a.id} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className={`w-full rounded-t ${aPct >= 70 ? 'bg-green-400' : aPct >= 40 ? 'bg-orange-400' : 'bg-red-400'}`}
+                        style={{ height: `${Math.max(4, aPct * 0.6)}px` }}
+                      />
+                      <span className="text-[10px] text-neutral-400">{Math.round(aPct)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => {
@@ -153,6 +212,7 @@ export default function QuizPage() {
                 setAnswers({});
                 setShowResult(false);
                 setAnswerRevealed(false);
+                setAttemptSaved(false);
               }}
               className="btn-secondary"
             >
@@ -165,6 +225,7 @@ export default function QuizPage() {
                 setShowResult(false);
                 setSelectedAnswer('');
                 setAnswerRevealed(false);
+                setAttemptSaved(false);
               }}
               className="btn-primary"
             >
@@ -475,6 +536,47 @@ export default function QuizPage() {
             </div>
           ))}
         </div>
+
+        {/* Attempt History */}
+        {attempts.length > 0 && (
+          <div>
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-3"
+            >
+              <History size={16} />
+              Ergebnis-Verlauf ({attempts.length} Versuche)
+            </button>
+            {showHistory && (
+              <div className="space-y-2">
+                {attempts.slice(0, 10).map((a) => {
+                  const pct = a.maxScore > 0 ? Math.round((a.score / a.maxScore) * 100) : 0;
+                  return (
+                    <div key={a.id} className="card p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                          pct >= 70 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : pct >= 40 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {pct}%
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                            {a.score}/{a.maxScore} richtig
+                          </p>
+                          <p className="text-xs text-neutral-400">
+                            {new Date(a.completedAt).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {showAI && (
           <AIGenerateModal type="quiz" onGenerate={handleAIGenerated} onClose={() => setShowAI(false)} />

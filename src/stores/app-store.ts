@@ -29,6 +29,8 @@ interface AppState {
   // Data loaders — cached, won't re-fetch if already loaded for same workspace
   loadDecks: (workspaceId: string, force?: boolean) => Promise<void>;
   loadFlashcards: (deckId: string) => Promise<void>;
+  loadAllFlashcardsForWorkspace: (workspaceId: string) => Promise<void>;
+  getAllDueCards: () => Flashcard[];
   loadQuizzes: (workspaceId: string, force?: boolean) => Promise<void>;
   loadTheoryNotes: (workspaceId: string, subjectId?: string, force?: boolean) => Promise<void>;
   loadSubjects: (workspaceId: string, force?: boolean) => Promise<void>;
@@ -99,9 +101,44 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loadFlashcards: async (deckId) => {
-    if (get().flashcards[deckId]) return; // already loaded
+    if (get().flashcards[deckId]) return;
     const cards = await firestore.getFlashcards(deckId);
     set((s) => ({ flashcards: { ...s.flashcards, [deckId]: cards } }));
+  },
+
+  loadAllFlashcardsForWorkspace: async (workspaceId) => {
+    if (get()._loaded['allCards'] === workspaceId) return;
+    const { decks } = get();
+    const deckList = decks.length > 0 ? decks : await firestore.getDecks(workspaceId);
+    if (decks.length === 0) set({ decks: deckList });
+
+    const allFlashcards: Record<string, Flashcard[]> = {};
+    const now = new Date().toISOString();
+    const updatedDecks = [...deckList];
+
+    for (const deck of deckList) {
+      const cards = get().flashcards[deck.id] || await firestore.getFlashcards(deck.id);
+      allFlashcards[deck.id] = cards;
+      const dueCount = cards.filter((c) => c.nextReview <= now).length;
+      const idx = updatedDecks.findIndex((d) => d.id === deck.id);
+      if (idx >= 0) updatedDecks[idx] = { ...updatedDecks[idx], cardCount: cards.length, dueCount };
+    }
+
+    set((s) => ({
+      flashcards: { ...s.flashcards, ...allFlashcards },
+      decks: updatedDecks,
+      _loaded: { ...s._loaded, allCards: workspaceId, decks: workspaceId },
+    }));
+  },
+
+  getAllDueCards: () => {
+    const { flashcards } = get();
+    const now = new Date().toISOString();
+    const due: Flashcard[] = [];
+    for (const deckId in flashcards) {
+      due.push(...flashcards[deckId].filter((c) => c.nextReview <= now));
+    }
+    return due;
   },
 
   loadQuizzes: async (workspaceId, force) => {

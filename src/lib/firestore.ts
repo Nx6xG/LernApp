@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseDb } from './firebase';
 import type {
-  Deck, Flashcard, Quiz, TheoryNote, Subject, StudySession,
+  Deck, Flashcard, Quiz, QuizAttempt, TheoryNote, Subject, StudySession,
   LearningGoal, UserProfile, Workspace, WorkspaceMember, WorkspaceInvite,
 } from '@/types';
 import { localDb } from './db';
@@ -258,6 +258,19 @@ export async function createSubject(subject: Omit<Subject, 'id'>): Promise<strin
   const docRef = await addDoc(collection(db(), 'subjects'), subject);
   await localDb.subjects.put({ ...subject, id: docRef.id } as Subject);
   return docRef.id;
+}
+
+// ==================== Quiz Attempts ====================
+
+export async function saveQuizAttempt(attempt: Omit<QuizAttempt, 'id'>): Promise<string> {
+  const docRef = await addDoc(collection(db(), 'quizAttempts'), attempt);
+  return docRef.id;
+}
+
+export async function getQuizAttempts(quizId: string): Promise<QuizAttempt[]> {
+  const q = query(collection(db(), 'quizAttempts'), where('quizId', '==', quizId));
+  const snap = await getDocs(q);
+  return sortDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as QuizAttempt), 'completedAt');
 }
 
 // ==================== Study Sessions ====================
