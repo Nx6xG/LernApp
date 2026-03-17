@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import {
   Sparkles,
   Layers,
@@ -124,20 +124,13 @@ interface Props {
 }
 
 export function Onboarding({ onComplete }: Props) {
-  const [step, setStep] = useState(0);
-  const [waitingForRoute, setWaitingForRoute] = useState(false);
+  const { step, nextStep } = useOnboardingStore();
   const router = useRouter();
   const pathname = usePathname();
   const current = steps[step];
   const Icon = current.icon;
   const isLast = step === steps.length - 1;
-
-  // When waiting for route change, advance once we arrive
-  useEffect(() => {
-    if (waitingForRoute && pathname === current.route) {
-      setWaitingForRoute(false);
-    }
-  }, [pathname, waitingForRoute, current.route]);
+  const isOnCorrectRoute = pathname === current.route;
 
   const handleNext = () => {
     if (isLast) {
@@ -145,25 +138,16 @@ export function Onboarding({ onComplete }: Props) {
       router.push('/dashboard');
       return;
     }
-
-    const nextStep = steps[step + 1];
-    // Navigate to the next step's route
-    if (pathname !== nextStep.route) {
-      router.push(nextStep.route);
-      setWaitingForRoute(true);
+    const next = steps[step + 1];
+    nextStep();
+    if (pathname !== next.route) {
+      router.push(next.route);
     }
-    setStep(step + 1);
   };
 
-  const handleCTA = () => {
-    // Navigate to current step's route if not already there
-    if (pathname !== current.route) {
+  const navigateToCurrent = () => {
+    if (!isOnCorrectRoute) {
       router.push(current.route);
-      setWaitingForRoute(true);
-    }
-    // For the first step ("Tour starten") and last step, advance
-    if (step === 0 || isLast) {
-      handleNext();
     }
   };
 
@@ -207,7 +191,6 @@ export function Onboarding({ onComplete }: Props) {
 
               <p className="text-sm text-neutral-500 mt-1">{current.description}</p>
 
-              {/* Details */}
               <div className="mt-3 space-y-1.5">
                 {current.details.map((detail, i) => (
                   <div key={i} className="flex items-start gap-2">
@@ -219,31 +202,18 @@ export function Onboarding({ onComplete }: Props) {
 
               {/* Actions */}
               <div className="flex items-center gap-3 mt-4">
-                {step === 0 ? (
-                  <button onClick={handleCTA} className="btn-primary text-sm py-1.5 flex items-center gap-2">
+                {!isOnCorrectRoute && step > 0 && (
+                  <button onClick={navigateToCurrent} className="btn-secondary text-sm py-1.5 flex items-center gap-2">
                     {current.cta}
-                    <ArrowRight size={14} />
                   </button>
-                ) : (
-                  <>
-                    {pathname !== current.route && (
-                      <button onClick={handleCTA} className="btn-primary text-sm py-1.5 flex items-center gap-2">
-                        {current.cta}
-                        <ArrowRight size={14} />
-                      </button>
-                    )}
-                    <button
-                      onClick={handleNext}
-                      className={`${pathname === current.route ? 'btn-primary' : 'btn-secondary'} text-sm py-1.5 flex items-center gap-2`}
-                    >
-                      {isLast ? 'Fertig!' : 'Weiter'}
-                      <ArrowRight size={14} />
-                    </button>
-                  </>
                 )}
-                <span className="text-xs text-neutral-400">
-                  oder <button onClick={onComplete} className="underline hover:text-neutral-600">überspringen</button>
-                </span>
+                <button
+                  onClick={handleNext}
+                  className="btn-primary text-sm py-1.5 flex items-center gap-2"
+                >
+                  {step === 0 ? current.cta : isLast ? 'Fertig!' : 'Weiter'}
+                  <ArrowRight size={14} />
+                </button>
               </div>
             </div>
           </div>

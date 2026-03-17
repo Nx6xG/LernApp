@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useWorkspaceStore } from '@/stores/workspace-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { Sidebar } from './Sidebar';
 import { Onboarding } from './Onboarding';
 import { redirect } from 'next/navigation';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, profile } = useAuthStore();
-  const { isLoading: wsLoading, currentWorkspaceId, initializeWorkspaces, loadInvites } =
-    useWorkspaceStore();
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const { isLoading: wsLoading, initializeWorkspaces, loadInvites } = useWorkspaceStore();
+  const { active: showOnboarding, initialize: initOnboarding, complete: completeOnboarding } =
+    useOnboardingStore();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -31,22 +32,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [profile?.email]);
 
-  // Show onboarding for new users (check localStorage)
+  // Initialize onboarding (only once via store)
   useEffect(() => {
     if (user && !authLoading && !wsLoading) {
-      const key = `lernapp_onboarded_${user.uid}`;
-      if (!localStorage.getItem(key)) {
-        setShowOnboarding(true);
-      }
+      initOnboarding(user.uid);
     }
   }, [user, authLoading, wsLoading]);
-
-  const completeOnboarding = () => {
-    if (user) {
-      localStorage.setItem(`lernapp_onboarded_${user.uid}`, 'true');
-    }
-    setShowOnboarding(false);
-  };
 
   if (authLoading || wsLoading) {
     return (
@@ -63,7 +54,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
-      {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
+      {showOnboarding && (
+        <Onboarding onComplete={() => completeOnboarding(user.uid)} />
+      )}
       <Sidebar />
       <main className="lg:ml-64 min-h-screen">
         <div className="p-6 lg:p-8 pt-16 lg:pt-8">{children}</div>
