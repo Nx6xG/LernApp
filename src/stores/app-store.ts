@@ -8,12 +8,15 @@ import { updateStreak } from '@/lib/streak';
 interface AppState {
   // Data
   decks: Deck[];
-  flashcards: Record<string, Flashcard[]>; // deckId -> cards
+  flashcards: Record<string, Flashcard[]>;
   quizzes: Quiz[];
   theoryNotes: TheoryNote[];
   subjects: Subject[];
   learningGoals: LearningGoal[];
   studySessions: StudySession[];
+
+  // Cache tracking — which workspace data was loaded for
+  _loaded: Record<string, string>; // key -> workspaceId
 
   // UI state
   isLoading: boolean;
@@ -23,14 +26,14 @@ interface AppState {
   // Clear all data (when switching workspaces)
   clearAll: () => void;
 
-  // Data loaders — all scoped to workspace
-  loadDecks: (workspaceId: string) => Promise<void>;
+  // Data loaders — cached, won't re-fetch if already loaded for same workspace
+  loadDecks: (workspaceId: string, force?: boolean) => Promise<void>;
   loadFlashcards: (deckId: string) => Promise<void>;
-  loadQuizzes: (workspaceId: string) => Promise<void>;
-  loadTheoryNotes: (workspaceId: string, subjectId?: string) => Promise<void>;
-  loadSubjects: (workspaceId: string) => Promise<void>;
-  loadLearningGoals: (workspaceId: string) => Promise<void>;
-  loadStudySessions: (workspaceId: string) => Promise<void>;
+  loadQuizzes: (workspaceId: string, force?: boolean) => Promise<void>;
+  loadTheoryNotes: (workspaceId: string, subjectId?: string, force?: boolean) => Promise<void>;
+  loadSubjects: (workspaceId: string, force?: boolean) => Promise<void>;
+  loadLearningGoals: (workspaceId: string, force?: boolean) => Promise<void>;
+  loadStudySessions: (workspaceId: string, force?: boolean) => Promise<void>;
 
   // Deck actions
   addDeck: (deck: Omit<Deck, 'id'>) => Promise<string>;
@@ -70,6 +73,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   subjects: [],
   learningGoals: [],
   studySessions: [],
+  _loaded: {},
   isLoading: false,
   sidebarOpen: true,
 
@@ -83,43 +87,52 @@ export const useAppStore = create<AppState>((set, get) => ({
     subjects: [],
     learningGoals: [],
     studySessions: [],
+    _loaded: {},
   }),
 
-  // ===== Loaders =====
-  loadDecks: async (workspaceId) => {
+  // ===== Loaders (cached) =====
+  loadDecks: async (workspaceId, force) => {
+    if (!force && get()._loaded['decks'] === workspaceId) return;
     set({ isLoading: true });
     const decks = await firestore.getDecks(workspaceId);
-    set({ decks, isLoading: false });
+    set((s) => ({ decks, isLoading: false, _loaded: { ...s._loaded, decks: workspaceId } }));
   },
 
   loadFlashcards: async (deckId) => {
+    if (get().flashcards[deckId]) return; // already loaded
     const cards = await firestore.getFlashcards(deckId);
     set((s) => ({ flashcards: { ...s.flashcards, [deckId]: cards } }));
   },
 
-  loadQuizzes: async (workspaceId) => {
+  loadQuizzes: async (workspaceId, force) => {
+    if (!force && get()._loaded['quizzes'] === workspaceId) return;
     const quizzes = await firestore.getQuizzes(workspaceId);
-    set({ quizzes });
+    set((s) => ({ quizzes, _loaded: { ...s._loaded, quizzes: workspaceId } }));
   },
 
-  loadTheoryNotes: async (workspaceId, subjectId?) => {
+  loadTheoryNotes: async (workspaceId, subjectId, force) => {
+    const key = `theoryNotes_${subjectId || 'all'}`;
+    if (!force && get()._loaded[key] === workspaceId) return;
     const theoryNotes = await firestore.getTheoryNotes(workspaceId, subjectId);
-    set({ theoryNotes });
+    set((s) => ({ theoryNotes, _loaded: { ...s._loaded, [key]: workspaceId } }));
   },
 
-  loadSubjects: async (workspaceId) => {
+  loadSubjects: async (workspaceId, force) => {
+    if (!force && get()._loaded['subjects'] === workspaceId) return;
     const subjects = await firestore.getSubjects(workspaceId);
-    set({ subjects });
+    set((s) => ({ subjects, _loaded: { ...s._loaded, subjects: workspaceId } }));
   },
 
-  loadLearningGoals: async (workspaceId) => {
+  loadLearningGoals: async (workspaceId, force) => {
+    if (!force && get()._loaded['learningGoals'] === workspaceId) return;
     const learningGoals = await firestore.getLearningGoals(workspaceId);
-    set({ learningGoals });
+    set((s) => ({ learningGoals, _loaded: { ...s._loaded, learningGoals: workspaceId } }));
   },
 
-  loadStudySessions: async (workspaceId) => {
+  loadStudySessions: async (workspaceId, force) => {
+    if (!force && get()._loaded['studySessions'] === workspaceId) return;
     const studySessions = await firestore.getStudySessions(workspaceId);
-    set({ studySessions });
+    set((s) => ({ studySessions, _loaded: { ...s._loaded, studySessions: workspaceId } }));
   },
 
   // ===== Deck Actions =====
@@ -229,9 +242,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ===== Session Logging =====
   logSession: async (session) => {
     await firestore.logStudySession(session);
-    // Update streak
     await updateStreak(session.userId).catch(() => {});
-    // Update total study minutes on profile
     await firestore.updateUserProfile(session.userId, {
       totalStudyMinutes: ((await firestore.getUserProfile(session.userId))?.totalStudyMinutes || 0) + session.duration,
     } as any).catch(() => {});

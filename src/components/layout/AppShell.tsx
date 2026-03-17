@@ -60,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
       <Sidebar />
       <main className="lg:ml-64 min-h-screen">
-        <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 animate-fade-in">{children}</div>
       </main>
       {!showOnboarding && <NotificationPrompt />}
     </div>
