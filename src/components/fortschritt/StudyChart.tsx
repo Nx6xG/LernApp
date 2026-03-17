@@ -54,10 +54,10 @@ export function StudyChart({ sessions }: Props) {
   }
 
   return (
-    <div className="card p-6">
+    <div className="card p-4 sm:p-6">
       <h3 className="font-semibold text-neutral-900 dark:text-white mb-4">Letzte 14 Tage</h3>
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
           <XAxis
             dataKey="label"

@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/stores/workspace-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { Sidebar } from './Sidebar';
 import { Onboarding } from './Onboarding';
+import { NotificationPrompt } from './NotificationPrompt';
 import { redirect } from 'next/navigation';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -59,8 +60,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
       <Sidebar />
       <main className="lg:ml-64 min-h-screen">
-        <div className="p-6 lg:p-8 pt-16 lg:pt-8">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">{children}</div>
       </main>
+      {!showOnboarding && <NotificationPrompt />}
     </div>
   );
 }

@@ -95,9 +95,9 @@ export function SearchModal({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-4 sm:pt-[15vh] px-4">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-lg card shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg card shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 border-b border-neutral-200 dark:border-neutral-700">
           <Search size={18} className="text-neutral-400 flex-shrink-0" />

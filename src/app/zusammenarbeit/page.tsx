@@ -196,7 +196,7 @@ export default function ZusammenarbeitPage() {
       </div>
 
       {/* Join by code */}
-      <div className="card p-4 flex gap-3">
+      <div className="card p-4 flex flex-col sm:flex-row gap-3">
         <input
           className="input flex-1"
           value={joinCode}

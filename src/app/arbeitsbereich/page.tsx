@@ -221,7 +221,7 @@ export default function ArbeitsbereichPage() {
         {isAdmin && (
           <div>
             <label className="label">Farbe</label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {colors.map((c) => (
                 <button
                   key={c}
@@ -246,7 +246,7 @@ export default function ArbeitsbereichPage() {
 
         {/* Invite form */}
         {isAdmin && (
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               className="input flex-1"
               value={inviteEmail}
@@ -254,8 +254,9 @@ export default function ArbeitsbereichPage() {
               placeholder="E-Mail-Adresse eingeben..."
               onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
             />
+            <div className="flex gap-3">
             <select
-              className="input w-32"
+              className="input w-full sm:w-32"
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as WorkspaceRole)}
             >
@@ -267,6 +268,7 @@ export default function ArbeitsbereichPage() {
               <UserPlus size={16} />
               Einladen
             </button>
+            </div>
           </div>
         )}
 

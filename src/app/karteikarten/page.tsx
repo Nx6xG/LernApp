@@ -122,10 +122,11 @@ export default function KarteikartenPage() {
               {currentCards.length} Karten &middot; {dueCards.length} fällig
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={() => setShowAI(true)} className="btn-secondary flex items-center gap-2">
               <Sparkles size={16} />
-              KI-Generierung
+              <span className="hidden sm:inline">KI-Generierung</span>
+              <span className="sm:hidden">KI</span>
             </button>
             <button
               onClick={() => setStudyMode(true)}

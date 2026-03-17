@@ -120,7 +120,7 @@ export default function ProfilPage() {
 
       {/* Profile Card */}
       <div className="card p-8">
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
           {/* Avatar */}
           <div className="relative flex-shrink-0">
             <div className="w-20 h-20 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-2xl font-bold text-primary-700 dark:text-primary-300">
@@ -158,7 +158,7 @@ export default function ProfilPage() {
                     placeholder="Erzähl etwas über dich..."
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="label">Standort</label>
                     <input
@@ -251,7 +251,7 @@ export default function ProfilPage() {
 
       {/* Stats */}
       {!editing && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="card p-5 text-center">
             <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-3">
               <Clock size={20} className="text-primary-600" />

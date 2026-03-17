@@ -141,19 +141,19 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
       {/* Flashcard */}
       <div className="perspective">
         <div
-          className={`flashcard-inner relative min-h-[300px] cursor-pointer ${isFlipped ? 'flipped' : ''}`}
+          className={`flashcard-inner relative min-h-[220px] sm:min-h-[300px] cursor-pointer ${isFlipped ? 'flipped' : ''}`}
           onClick={() => setIsFlipped(!isFlipped)}
         >
-          <div className="flashcard-front absolute inset-0 card p-8 flex flex-col items-center justify-center">
-            <p className="text-xs uppercase tracking-wider text-neutral-400 mb-4">Frage</p>
-            <p className="text-xl text-center text-neutral-900 dark:text-white font-medium">
+          <div className="flashcard-front absolute inset-0 card p-5 sm:p-8 flex flex-col items-center justify-center">
+            <p className="text-xs uppercase tracking-wider text-neutral-400 mb-3 sm:mb-4">Frage</p>
+            <p className="text-lg sm:text-xl text-center text-neutral-900 dark:text-white font-medium">
               {currentCard.front}
             </p>
-            <p className="text-sm text-neutral-400 mt-6">Leertaste oder tippen zum Umdrehen</p>
+            <p className="text-xs sm:text-sm text-neutral-400 mt-4 sm:mt-6">Tippen zum Umdrehen</p>
           </div>
-          <div className="flashcard-back absolute inset-0 card p-8 flex flex-col items-center justify-center bg-primary-50 dark:bg-primary-900/10">
-            <p className="text-xs uppercase tracking-wider text-primary-500 mb-4">Antwort</p>
-            <p className="text-xl text-center text-neutral-900 dark:text-white font-medium">
+          <div className="flashcard-back absolute inset-0 card p-5 sm:p-8 flex flex-col items-center justify-center bg-primary-50 dark:bg-primary-900/10">
+            <p className="text-xs uppercase tracking-wider text-primary-500 mb-3 sm:mb-4">Antwort</p>
+            <p className="text-lg sm:text-xl text-center text-neutral-900 dark:text-white font-medium">
               {currentCard.back}
             </p>
           </div>
@@ -162,7 +162,7 @@ export function FlashcardStudy({ cards, deckName, onExit }: Props) {
 
       {/* Rating buttons */}
       {isFlipped && (
-        <div className="grid grid-cols-4 gap-3 animate-fade-in">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 animate-fade-in">
           <button
             onClick={() => handleRate('again')}
             className="flex flex-col items-center gap-1 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
