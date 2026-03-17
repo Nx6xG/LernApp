@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Layers, Loader2, X, Check } from 'lucide-react';
+import { getAIConfig } from '@/lib/ai-config';
 
 interface Props {
   noteTitle: string;
@@ -40,6 +41,7 @@ export function NoteToFlashcards({ noteTitle, noteContent, onGenerate, onClose }
     setLoading(true);
     setError('');
     try {
+      const aiConfig = getAIConfig();
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,6 +51,9 @@ export function NoteToFlashcards({ noteTitle, noteContent, onGenerate, onClose }
           content: textContent,
           count,
           difficulty,
+          provider: aiConfig.provider,
+          apiKey: aiConfig.apiKey,
+          model: aiConfig.model,
           language: 'de',
         }),
       });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { updateUserProfile } from '@/lib/firestore';
 import { getFirebaseAuth } from '@/lib/firebase';
@@ -17,7 +17,13 @@ import {
   Save,
   Edit2,
   BookOpen,
+  Sparkles,
+  Key,
+  Check,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
+import { getAIConfig, saveAIConfig, getDefaultModel, type AIProvider, type AIConfig } from '@/lib/ai-config';
 
 export default function ProfilPage() {
   const user = useAuthStore((s) => s.user);
@@ -279,6 +285,131 @@ export default function ProfilPage() {
           </div>
         </div>
       )}
+
+      {/* AI Settings */}
+      <AISettings />
+    </div>
+  );
+}
+
+// ==================== AI Settings Component ====================
+
+function AISettings() {
+  const [config, setConfig] = useState<AIConfig>({ provider: 'server', apiKey: '', model: '' });
+  const [showKey, setShowKey] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setConfig(getAIConfig());
+  }, []);
+
+  const handleSave = () => {
+    saveAIConfig(config);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleProviderChange = (provider: AIProvider) => {
+    setConfig({
+      provider,
+      apiKey: provider === 'server' ? '' : config.apiKey,
+      model: provider === 'server' ? '' : getDefaultModel(provider),
+    });
+  };
+
+  return (
+    <div className="card p-6 space-y-4">
+      <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+        <Sparkles size={20} className="text-primary-600" />
+        KI-Einstellungen
+      </h2>
+
+      <p className="text-sm text-neutral-500">
+        Wähle welche KI für die Generierung von Karteikarten, Quizfragen und Zusammenfassungen verwendet wird.
+      </p>
+
+      {/* Provider selection */}
+      <div>
+        <label className="label">Anbieter</label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {([
+            { id: 'server' as AIProvider, name: 'Server-Standard', desc: 'Nutzt den vom Betreiber konfigurierten Key' },
+            { id: 'anthropic' as AIProvider, name: 'Anthropic (Claude)', desc: 'Eigener API-Key für Claude' },
+            { id: 'openai' as AIProvider, name: 'OpenAI (GPT)', desc: 'Eigener API-Key für GPT' },
+          ]).map((p) => (
+            <button
+              key={p.id}
+              onClick={() => handleProviderChange(p.id)}
+              className={`p-3 rounded-xl border-2 text-left transition-colors ${
+                config.provider === p.id
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300'
+              }`}
+            >
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">{p.name}</p>
+              <p className="text-xs text-neutral-500 mt-0.5">{p.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* API Key input */}
+      {config.provider !== 'server' && (
+        <>
+          <div>
+            <label className="label flex items-center gap-2">
+              <Key size={14} />
+              API-Key
+            </label>
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                className="input pr-10 font-mono text-sm"
+                value={config.apiKey}
+                onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+                placeholder={config.provider === 'anthropic' ? 'sk-ant-...' : 'sk-...'}
+              />
+              <button
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+              >
+                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <p className="text-xs text-neutral-400 mt-1">
+              Dein Key wird nur lokal im Browser gespeichert, nicht auf dem Server.
+            </p>
+          </div>
+
+          <div>
+            <label className="label">Modell</label>
+            <input
+              className="input text-sm"
+              value={config.model}
+              onChange={(e) => setConfig({ ...config, model: e.target.value })}
+              placeholder={getDefaultModel(config.provider)}
+            />
+            <p className="text-xs text-neutral-400 mt-1">
+              {config.provider === 'anthropic'
+                ? 'z.B. claude-sonnet-4-20250514, claude-haiku-4-5-20251001'
+                : 'z.B. gpt-4o-mini, gpt-4o, gpt-4-turbo'}
+            </p>
+          </div>
+        </>
+      )}
+
+      <div className="flex items-center gap-3">
+        <button onClick={handleSave} className="btn-primary flex items-center gap-2">
+          <Save size={16} />
+          Speichern
+        </button>
+        {saved && (
+          <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+            <Check size={14} />
+            Gespeichert!
+          </span>
+        )}
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Sparkles, Loader2 } from 'lucide-react';
+import { getAIConfig } from '@/lib/ai-config';
 
 interface Props {
   type: 'flashcards' | 'quiz' | 'summary';
@@ -23,13 +24,22 @@ export function AIGenerateModal({ type, onGenerate, onClose }: Props) {
     setError('');
 
     try {
+      const aiConfig = getAIConfig();
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, topic, content, count, difficulty, language: 'de' }),
+        body: JSON.stringify({
+          type, topic, content, count, difficulty, language: 'de',
+          provider: aiConfig.provider,
+          apiKey: aiConfig.apiKey,
+          model: aiConfig.model,
+        }),
       });
 
-      if (!res.ok) throw new Error('KI-Generierung fehlgeschlagen');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'KI-Generierung fehlgeschlagen');
+      }
 
       const data = await res.json();
       if (type === 'flashcards') {
