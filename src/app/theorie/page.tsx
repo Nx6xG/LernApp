@@ -52,7 +52,7 @@ export default function TheoriePage() {
   const [showAI, setShowAI] = useState(false);
   const [showNoteToCards, setShowNoteToCards] = useState(false);
   const [flashcardToast, setFlashcardToast] = useState('');
-  const [collabActive, setCollabActive] = useState(false);
+  const [collabActive, setCollabActive] = useState(true);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
   // Show what note we're viewing in presence
@@ -126,7 +126,7 @@ export default function TheoriePage() {
     });
     setSelectedNote({ ...selectedNote, title: editTitle, content: editContent, tags: editTags });
     setEditing(false);
-    setCollabActive(false);
+    setCollabActive(true);
   };
 
   const handleAISummary = async (summary: string) => {
@@ -224,10 +224,9 @@ export default function TheoriePage() {
                       ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                       : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200'
                   }`}
-                  title={collabActive ? 'Live-Bearbeitung aktiv' : 'Live-Bearbeitung starten'}
+                  title={collabActive ? 'Live-Sync aktiv — klicken für Offline' : 'Offline — klicken für Live-Sync'}
                 >
                   <Users size={16} />
-                  <span className="hidden sm:inline">{collabActive ? 'Live' : 'Zusammen'}</span>
                   {collabActive && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
                 </button>
                 <button onClick={() => setShowAI(true)} className="btn-secondary flex items-center gap-2">
@@ -241,7 +240,7 @@ export default function TheoriePage() {
                 <button
                   onClick={() => {
                     setEditing(false);
-                    setCollabActive(false);
+                    setCollabActive(true);
                     setEditTitle(selectedNote.title);
                     setEditContent(selectedNote.content);
                     setEditTags(selectedNote.tags || []);
