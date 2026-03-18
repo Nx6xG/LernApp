@@ -41,7 +41,7 @@ export function setPresence(
     userId,
     displayName,
     page,
-    detail,
+    detail: detail || '',
     color: getColorForUser(userId),
     lastSeen: Date.now(),
   };
