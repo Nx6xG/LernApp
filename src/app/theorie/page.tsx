@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useWorkspaceContext } from '@/hooks/useWorkspaceContext';
 import { useAppStore } from '@/stores/app-store';
-import { Plus, BookOpen, Trash2, Edit2, Save, X, Sparkles, Tag, Layers } from 'lucide-react';
+import { Plus, BookOpen, Trash2, Edit2, Save, X, Sparkles, Tag, Layers, Users } from 'lucide-react';
 import type { TheoryNote } from '@/types';
 import { AIGenerateModal } from '@/components/ui/AIGenerateModal';
 import { SelectionContextMenu } from '@/components/theorie/SelectionContextMenu';
@@ -52,6 +52,7 @@ export default function TheoriePage() {
   const [showAI, setShowAI] = useState(false);
   const [showNoteToCards, setShowNoteToCards] = useState(false);
   const [flashcardToast, setFlashcardToast] = useState('');
+  const [collabActive, setCollabActive] = useState(false);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
   // Show what note we're viewing in presence
@@ -125,6 +126,7 @@ export default function TheoriePage() {
     });
     setSelectedNote({ ...selectedNote, title: editTitle, content: editContent, tags: editTags });
     setEditing(false);
+    setCollabActive(false);
   };
 
   const handleAISummary = async (summary: string) => {
@@ -215,9 +217,22 @@ export default function TheoriePage() {
           <div className="flex gap-2">
             {editing ? (
               <>
+                <button
+                  onClick={() => setCollabActive(!collabActive)}
+                  className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg font-medium transition-colors ${
+                    collabActive
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200'
+                  }`}
+                  title={collabActive ? 'Live-Bearbeitung aktiv' : 'Live-Bearbeitung starten'}
+                >
+                  <Users size={16} />
+                  <span className="hidden sm:inline">{collabActive ? 'Live' : 'Zusammen'}</span>
+                  {collabActive && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+                </button>
                 <button onClick={() => setShowAI(true)} className="btn-secondary flex items-center gap-2">
                   <Sparkles size={16} />
-                  KI-Hilfe
+                  <span className="hidden sm:inline">KI-Hilfe</span>
                 </button>
                 <button onClick={handleSaveNote} className="btn-primary flex items-center gap-2">
                   <Save size={16} />
@@ -226,6 +241,7 @@ export default function TheoriePage() {
                 <button
                   onClick={() => {
                     setEditing(false);
+                    setCollabActive(false);
                     setEditTitle(selectedNote.title);
                     setEditContent(selectedNote.content);
                     setEditTags(selectedNote.tags || []);
@@ -316,11 +332,11 @@ export default function TheoriePage() {
           className="min-h-[300px] sm:min-h-[500px] rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-white dark:bg-neutral-800"
         >
           <NotionEditor
-            key={`${selectedNote.id}-${editing}`}
+            key={`${selectedNote.id}-${editing}-${collabActive ? 'collab' : 'solo'}`}
             content={editing ? editContent : selectedNote.content}
             onChange={setEditContent}
             editable={editing}
-            collaborationId={editing ? selectedNote.id : undefined}
+            collaborationId={editing && collabActive ? selectedNote.id : undefined}
             userName={profile?.displayName || 'Anonym'}
             userColor={getUserColor(uid)}
           />
