@@ -27,6 +27,24 @@ Gib ein JSON-Objekt zurück mit folgendem Format:
 ${content ? `Basierend auf diesem Inhalt:\n${content}\n` : ''}
 Gib ein JSON-Objekt zurück mit folgendem Format:
 {"explanation": "Die Erklärung in Markdown"}`;
+  } else if (type === 'smart-flashcards') {
+    userPrompt = `Analysiere den folgenden Lerninhalt und erstelle die optimale Anzahl an Karteikarten.
+
+Inhalt zum Thema "${topic}":
+${content}
+
+Anweisungen:
+- Lies den gesamten Text sorgfältig
+- Identifiziere ALLE wichtigen Konzepte, Definitionen, Fakten und Zusammenhänge
+- Erstelle für JEDES wichtige Konzept eine eigene Karteikarte
+- Die Vorderseite soll eine klare Frage sein
+- Die Rückseite soll eine präzise, vollständige Antwort sein
+- Erstelle so viele Karten wie nötig — nicht mehr, nicht weniger
+- Überspringe nichts Wichtiges, aber erstelle keine überflüssigen Karten
+- Sortiere die Karten in einer logischen Reihenfolge
+
+Gib ein JSON-Objekt zurück mit folgendem Format:
+{"flashcards": [{"front": "Frage", "back": "Antwort"}], "reasoning": "Kurze Erklärung warum du diese Anzahl gewählt hast"}`;
   }
 
   return { systemPrompt, userPrompt };
