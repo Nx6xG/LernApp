@@ -18,8 +18,15 @@ const NotionEditor = dynamic(
   { ssr: false, loading: () => <div className="h-96 flex items-center justify-center text-neutral-400">Editor lädt...</div> }
 );
 
+const PRESENCE_COLORS = ['#4c6ef5', '#40c057', '#fab005', '#fa5252', '#7950f2', '#15aabf', '#e64980', '#fd7e14'];
+function getUserColor(uid: string): string {
+  let hash = 0;
+  for (let i = 0; i < uid.length; i++) hash = ((hash << 5) - hash + uid.charCodeAt(i)) | 0;
+  return PRESENCE_COLORS[Math.abs(hash) % PRESENCE_COLORS.length];
+}
+
 export default function TheoriePage() {
-  const { uid, workspaceId } = useWorkspaceContext();
+  const { uid, workspaceId, profile } = useWorkspaceContext();
   const {
     theoryNotes,
     subjects,
@@ -313,6 +320,9 @@ export default function TheoriePage() {
             content={editing ? editContent : selectedNote.content}
             onChange={setEditContent}
             editable={editing}
+            collaborationId={editing ? selectedNote.id : undefined}
+            userName={profile?.displayName || 'Anonym'}
+            userColor={getUserColor(uid)}
           />
         </div>
 

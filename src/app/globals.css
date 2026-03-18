@@ -116,3 +116,33 @@
 .bn-editor th {
   @apply bg-neutral-50 dark:bg-neutral-700/50 font-semibold;
 }
+
+/* Collaboration cursors */
+.yRemoteSelection {
+  opacity: 0.25;
+}
+
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid;
+  border-color: inherit;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.yRemoteSelectionHead::after {
+  content: attr(data-user);
+  position: absolute;
+  top: -1.4em;
+  left: -2px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: white;
+  background: inherit;
+  background-color: currentColor;
+  border-radius: 4px 4px 4px 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
