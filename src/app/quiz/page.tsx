@@ -7,6 +7,7 @@ import { Plus, Play, Trash2, Sparkles, CheckCircle2, XCircle, HelpCircle, Histor
 import type { Quiz, QuizQuestion, QuestionType, QuizAttempt } from '@/types';
 import { AIGenerateModal } from '@/components/ui/AIGenerateModal';
 import { saveQuizAttempt, getQuizAttempts } from '@/lib/firestore';
+import { usePresenceDetail } from '@/hooks/usePresence';
 
 export default function QuizPage() {
   const { uid, workspaceId } = useWorkspaceContext();
@@ -18,6 +19,8 @@ export default function QuizPage() {
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [playMode, setPlayMode] = useState(false);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
+
+  usePresenceDetail(selectedQuiz?.title);
   const [showAI, setShowAI] = useState(false);
 
   // Question form

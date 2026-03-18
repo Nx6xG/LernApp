@@ -8,6 +8,7 @@ import type { TheoryNote } from '@/types';
 import { AIGenerateModal } from '@/components/ui/AIGenerateModal';
 import { SelectionContextMenu } from '@/components/theorie/SelectionContextMenu';
 import { NoteToFlashcards } from '@/components/theorie/NoteToFlashcards';
+import { usePresenceDetail } from '@/hooks/usePresence';
 import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 
@@ -45,6 +46,9 @@ export default function TheoriePage() {
   const [showNoteToCards, setShowNoteToCards] = useState(false);
   const [flashcardToast, setFlashcardToast] = useState('');
   const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  // Show what note we're viewing in presence
+  usePresenceDetail(selectedNote?.title);
 
   useEffect(() => {
     if (workspaceId) {

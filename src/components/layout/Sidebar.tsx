@@ -22,6 +22,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { useAppStore } from '@/stores/app-store';
 import { useTheme } from '@/hooks/useTheme';
+import { OnlineUsers } from './OnlineUsers';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SearchModal } from './SearchModal';
 
@@ -126,6 +127,9 @@ export function Sidebar() {
               );
             })}
           </nav>
+
+          {/* Online users */}
+          <OnlineUsers />
 
           {/* Theme toggle */}
           <div className="px-3 pb-2">

@@ -8,6 +8,7 @@ import type { Deck, Flashcard } from '@/types';
 import { FlashcardStudy } from '@/components/karteikarten/FlashcardStudy';
 import { AIGenerateModal } from '@/components/ui/AIGenerateModal';
 import { BulkImport } from '@/components/karteikarten/BulkImport';
+import { usePresenceDetail } from '@/hooks/usePresence';
 
 export default function KarteikartenPage() {
   const { uid, workspaceId } = useWorkspaceContext();
@@ -22,6 +23,8 @@ export default function KarteikartenPage() {
   const [newCardFront, setNewCardFront] = useState('');
   const [newCardBack, setNewCardBack] = useState('');
   const [showAI, setShowAI] = useState(false);
+
+  usePresenceDetail(selectedDeck?.name);
   const [showBulk, setShowBulk] = useState(false);
 
   useEffect(() => {
