@@ -20,6 +20,7 @@ import {
   Sparkles,
   Key,
   Check,
+  Loader2,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -296,120 +297,360 @@ export default function ProfilPage() {
 
 function AISettings() {
   const [config, setConfig] = useState<AIConfig>({ provider: 'server', apiKey: '', model: '' });
+  const [showSetup, setShowSetup] = useState(false);
   const [showKey, setShowKey] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [testError, setTestError] = useState('');
 
   useEffect(() => {
-    setConfig(getAIConfig());
+    const stored = getAIConfig();
+    setConfig(stored);
   }, []);
 
-  const handleSave = () => {
-    saveAIConfig(config);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const isConnected = config.provider !== 'server' && config.apiKey.length > 5;
+
+  const handleSave = (newConfig: AIConfig) => {
+    saveAIConfig(newConfig);
+    setConfig(newConfig);
+    setShowSetup(false);
   };
 
-  const handleProviderChange = (provider: AIProvider) => {
-    setConfig({
-      provider,
-      apiKey: provider === 'server' ? '' : config.apiKey,
-      model: provider === 'server' ? '' : getDefaultModel(provider),
-    });
+  const handleDisconnect = () => {
+    const reset: AIConfig = { provider: 'server', apiKey: '', model: '' };
+    saveAIConfig(reset);
+    setConfig(reset);
+    setTestResult(null);
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    setTestError('');
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'flashcards',
+          topic: 'Test',
+          count: 1,
+          difficulty: 'easy',
+          language: 'de',
+          provider: config.provider,
+          apiKey: config.apiKey,
+          model: config.model,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Fehler ${res.status}`);
+      }
+      setTestResult('success');
+    } catch (err: any) {
+      setTestResult('error');
+      setTestError(err.message);
+    } finally {
+      setTesting(false);
+    }
   };
 
   return (
     <div className="card p-6 space-y-4">
       <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
         <Sparkles size={20} className="text-primary-600" />
-        KI-Einstellungen
+        KI-Verbindung
       </h2>
 
-      <p className="text-sm text-neutral-500">
-        Wähle welche KI für die Generierung von Karteikarten, Quizfragen und Zusammenfassungen verwendet wird.
-      </p>
+      {/* Connected state */}
+      {isConnected && !showSetup ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800">
+            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+              <Check size={20} className="text-green-600" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-green-800 dark:text-green-300">
+                {config.provider === 'anthropic' ? 'Claude (Anthropic)' : 'GPT (OpenAI)'} verbunden
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-400">
+                Modell: {config.model || getDefaultModel(config.provider)} &middot; Key: ...{config.apiKey.slice(-4)}
+              </p>
+            </div>
+          </div>
 
-      {/* Provider selection */}
-      <div>
-        <label className="label">Anbieter</label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {([
-            { id: 'server' as AIProvider, name: 'Server-Standard', desc: 'Nutzt den vom Betreiber konfigurierten Key' },
-            { id: 'anthropic' as AIProvider, name: 'Anthropic (Claude)', desc: 'Eigener API-Key für Claude' },
-            { id: 'openai' as AIProvider, name: 'OpenAI (GPT)', desc: 'Eigener API-Key für GPT' },
-          ]).map((p) => (
-            <button
-              key={p.id}
-              onClick={() => handleProviderChange(p.id)}
-              className={`p-3 rounded-xl border-2 text-left transition-colors ${
-                config.provider === p.id
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10'
-                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300'
-              }`}
-            >
-              <p className="text-sm font-medium text-neutral-900 dark:text-white">{p.name}</p>
-              <p className="text-xs text-neutral-500 mt-0.5">{p.desc}</p>
+          <div className="flex gap-2">
+            <button onClick={handleTest} className="btn-secondary text-sm flex items-center gap-2" disabled={testing}>
+              {testing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {testing ? 'Teste...' : 'Verbindung testen'}
             </button>
-          ))}
+            <button onClick={() => setShowSetup(true)} className="btn-secondary text-sm">
+              Ändern
+            </button>
+            <button onClick={handleDisconnect} className="text-sm text-red-500 hover:text-red-600 px-3">
+              Trennen
+            </button>
+          </div>
+
+          {testResult === 'success' && (
+            <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+              <Check size={14} /> Verbindung funktioniert!
+            </p>
+          )}
+          {testResult === 'error' && (
+            <p className="text-sm text-red-600 dark:text-red-400">{testError}</p>
+          )}
         </div>
+      ) : !showSetup ? (
+        /* Not connected state */
+        <div className="space-y-4">
+          <p className="text-sm text-neutral-500">
+            Verbinde deine eigene KI um Karteikarten, Quizfragen und Zusammenfassungen automatisch generieren zu lassen.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              onClick={() => { setConfig({ ...config, provider: 'openai' }); setShowSetup(true); }}
+              className="p-4 rounded-xl border-2 border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-700 text-left transition-colors group"
+            >
+              <p className="font-semibold text-neutral-900 dark:text-white group-hover:text-primary-600">OpenAI (GPT)</p>
+              <p className="text-xs text-neutral-500 mt-1">GPT-4o, GPT-4o-mini, etc.</p>
+            </button>
+            <button
+              onClick={() => { setConfig({ ...config, provider: 'anthropic' }); setShowSetup(true); }}
+              className="p-4 rounded-xl border-2 border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-700 text-left transition-colors group"
+            >
+              <p className="font-semibold text-neutral-900 dark:text-white group-hover:text-primary-600">Anthropic (Claude)</p>
+              <p className="text-xs text-neutral-500 mt-1">Claude Sonnet, Claude Haiku, etc.</p>
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Setup flow */
+        <SetupFlow
+          provider={config.provider === 'server' ? 'openai' : config.provider}
+          initialKey={config.apiKey}
+          initialModel={config.model}
+          onSave={handleSave}
+          onCancel={() => setShowSetup(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ==================== Setup Flow ====================
+
+function SetupFlow({
+  provider,
+  initialKey,
+  initialModel,
+  onSave,
+  onCancel,
+}: {
+  provider: AIProvider;
+  initialKey: string;
+  initialModel: string;
+  onSave: (config: AIConfig) => void;
+  onCancel: () => void;
+}) {
+  const [step, setStep] = useState(initialKey ? 2 : 1);
+  const [apiKey, setApiKey] = useState(initialKey);
+  const [model, setModel] = useState(initialModel || getDefaultModel(provider));
+  const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testOk, setTestOk] = useState(false);
+  const [testError, setTestError] = useState('');
+
+  const isAnthropic = provider === 'anthropic';
+  const providerName = isAnthropic ? 'Anthropic' : 'OpenAI';
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestOk(false);
+    setTestError('');
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'flashcards', topic: 'Test', count: 1,
+          difficulty: 'easy', language: 'de',
+          provider, apiKey, model,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Fehler ${res.status}`);
+      }
+      setTestOk(true);
+      setStep(3);
+    } catch (err: any) {
+      setTestError(err.message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Step indicator */}
+      <div className="flex items-center gap-2">
+        {[1, 2, 3].map((s) => (
+          <div key={s} className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+              s < step ? 'bg-green-500 text-white'
+              : s === step ? 'bg-primary-600 text-white'
+              : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-500'
+            }`}>
+              {s < step ? <Check size={14} /> : s}
+            </div>
+            {s < 3 && <div className={`w-8 h-0.5 ${s < step ? 'bg-green-500' : 'bg-neutral-200 dark:bg-neutral-700'}`} />}
+          </div>
+        ))}
+        <span className="text-xs text-neutral-400 ml-2">
+          {step === 1 ? 'Key erstellen' : step === 2 ? 'Key eingeben' : 'Fertig!'}
+        </span>
       </div>
 
-      {/* API Key input */}
-      {config.provider !== 'server' && (
-        <>
-          <div>
-            <label className="label flex items-center gap-2">
-              <Key size={14} />
-              API-Key
-            </label>
-            <div className="relative">
-              <input
-                type={showKey ? 'text' : 'password'}
-                className="input pr-10 font-mono text-sm"
-                value={config.apiKey}
-                onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                placeholder={config.provider === 'anthropic' ? 'sk-ant-...' : 'sk-...'}
-              />
-              <button
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-              >
-                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+      {/* Step 1: Instructions */}
+      {step === 1 && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-neutral-900 dark:text-white">
+            {providerName} API-Key erstellen
+          </h3>
+          <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+              <div>
+                <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                  {isAnthropic ? 'Gehe zu console.anthropic.com' : 'Gehe zu platform.openai.com'}
+                </p>
+                <a
+                  href={isAnthropic ? 'https://console.anthropic.com/settings/keys' : 'https://platform.openai.com/api-keys'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary-600 hover:text-primary-700 underline"
+                >
+                  {isAnthropic ? 'console.anthropic.com/settings/keys' : 'platform.openai.com/api-keys'} &rarr;
+                </a>
+              </div>
             </div>
-            <p className="text-xs text-neutral-400 mt-1">
-              Dein Key wird nur lokal im Browser gespeichert, nicht auf dem Server.
-            </p>
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                {isAnthropic
+                  ? 'Erstelle einen Account (falls nötig) und klicke auf "Create Key"'
+                  : 'Melde dich an und klicke auf "Create new secret key"'}
+              </p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                Kopiere den Key — er beginnt mit {isAnthropic ? '"sk-ant-"' : '"sk-"'}
+              </p>
+            </div>
           </div>
-
-          <div>
-            <label className="label">Modell</label>
-            <input
-              className="input text-sm"
-              value={config.model}
-              onChange={(e) => setConfig({ ...config, model: e.target.value })}
-              placeholder={getDefaultModel(config.provider)}
-            />
-            <p className="text-xs text-neutral-400 mt-1">
-              {config.provider === 'anthropic'
-                ? 'z.B. claude-sonnet-4-20250514, claude-haiku-4-5-20251001'
-                : 'z.B. gpt-4o-mini, gpt-4o, gpt-4-turbo'}
-            </p>
+          <div className="flex gap-2">
+            <button onClick={() => setStep(2)} className="btn-primary text-sm">
+              Key habe ich, weiter
+            </button>
+            <button onClick={onCancel} className="btn-secondary text-sm">
+              Abbrechen
+            </button>
           </div>
-        </>
+        </div>
       )}
 
-      <div className="flex items-center gap-3">
-        <button onClick={handleSave} className="btn-primary flex items-center gap-2">
-          <Save size={16} />
-          Speichern
-        </button>
-        {saved && (
-          <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
-            <Check size={14} />
-            Gespeichert!
-          </span>
-        )}
-      </div>
+      {/* Step 2: Enter key */}
+      {step === 2 && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-neutral-900 dark:text-white">
+            {providerName} API-Key eingeben
+          </h3>
+          <div className="relative">
+            <input
+              type={showKey ? 'text' : 'password'}
+              className="input pr-10 font-mono text-sm"
+              value={apiKey}
+              onChange={(e) => { setApiKey(e.target.value); setTestError(''); }}
+              placeholder={isAnthropic ? 'sk-ant-api03-...' : 'sk-proj-...'}
+              autoFocus
+            />
+            <button
+              onClick={() => setShowKey(!showKey)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+            >
+              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          <p className="text-xs text-neutral-400">
+            Dein Key bleibt nur in deinem Browser gespeichert.
+          </p>
+
+          {testError && (
+            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+              {testError}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleTest}
+              className="btn-primary text-sm flex items-center gap-2"
+              disabled={testing || apiKey.length < 5}
+            >
+              {testing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {testing ? 'Teste Verbindung...' : 'Verbinden & Testen'}
+            </button>
+            <button onClick={() => setStep(1)} className="btn-secondary text-sm">
+              Zurück
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Success */}
+      {step === 3 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800">
+            <Check size={20} className="text-green-600 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-green-800 dark:text-green-300">Verbindung erfolgreich!</p>
+              <p className="text-xs text-green-600 dark:text-green-400">
+                {providerName} ist bereit. Du kannst jetzt KI-Features nutzen.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Modell (optional)</label>
+            <select
+              className="input text-sm"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              {isAnthropic ? (
+                <>
+                  <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (empfohlen)</option>
+                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (schneller, günstiger)</option>
+                </>
+              ) : (
+                <>
+                  <option value="gpt-4o-mini">GPT-4o Mini (empfohlen, günstig)</option>
+                  <option value="gpt-4o">GPT-4o (besser, teurer)</option>
+                </>
+              )}
+            </select>
+          </div>
+
+          <button
+            onClick={() => onSave({ provider, apiKey, model })}
+            className="btn-primary text-sm w-full"
+          >
+            Fertig — KI aktivieren
+          </button>
+        </div>
+      )}
     </div>
   );
 }
