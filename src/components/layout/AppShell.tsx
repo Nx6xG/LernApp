@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { Sidebar } from './Sidebar';
 import { Onboarding } from './Onboarding';
 import { NotificationPrompt } from './NotificationPrompt';
@@ -32,6 +33,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       loadInvites(profile.email);
     }
   }, [profile?.email]);
+
+  // Real-time sync — listen to Firestore changes from other users
+  useRealtimeSync();
 
   // Initialize onboarding (only once via store)
   useEffect(() => {
