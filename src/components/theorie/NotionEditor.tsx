@@ -117,13 +117,13 @@ function CollabEditor({ content, onChange, editable, theme, collaborationId, use
   }, [collaborationId, userName, userColor]);
 
   if (!collabReady || !collabRef.current) {
-    // Show standard editor as fallback while loading
     return <StandardEditor content={content} onChange={onChange} editable={editable} theme={theme} />;
   }
 
   return (
     <CollabEditorInner
       collab={collabRef.current}
+      initialContent={content}
       onChange={onChange}
       editable={editable}
       theme={theme}
@@ -131,9 +131,11 @@ function CollabEditor({ content, onChange, editable, theme, collaborationId, use
   );
 }
 
-function CollabEditorInner({ collab, onChange, editable, theme }: {
-  collab: any; onChange: (c: string) => void; editable: boolean; theme: 'light' | 'dark';
+function CollabEditorInner({ collab, initialContent, onChange, editable, theme }: {
+  collab: any; initialContent: string; onChange: (c: string) => void; editable: boolean; theme: 'light' | 'dark';
 }) {
+  const hasInitialized = useRef(false);
+
   const editor = useCreateBlockNote({
     collaboration: {
       fragment: collab.fragment,
@@ -141,6 +143,38 @@ function CollabEditorInner({ collab, onChange, editable, theme }: {
       user: collab.user,
     },
   });
+
+  // If Yjs doc is empty (we're the first editor), load existing content
+  useEffect(() => {
+    if (!editor || hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    // Wait a short moment for potential sync from other peers
+    const timer = setTimeout(() => {
+      const blocks = editor.document;
+      const isEmpty = blocks.length === 0 ||
+        (blocks.length === 1 && blocks[0].type === 'paragraph' &&
+          (blocks[0].content === undefined || blocks[0].content?.length === 0 ||
+           (Array.isArray(blocks[0].content) && blocks[0].content.length === 1 &&
+            (blocks[0].content[0] as any)?.text === '')));
+
+      if (isEmpty && initialContent) {
+        const parsed = parseContent(initialContent);
+        if (parsed && parsed.length > 0) {
+          try {
+            editor.replaceBlocks(editor.document, parsed);
+          } catch {
+            // fallback: insert at end
+            try {
+              editor.insertBlocks(parsed, editor.document[0], 'before');
+            } catch {}
+          }
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [editor, initialContent]);
 
   useEffect(() => {
     if (editor) editor.isEditable = editable;
